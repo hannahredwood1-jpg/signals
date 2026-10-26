@@ -1,10 +1,11 @@
 // Signals service worker: shows web-push notifications and keeps the app shell available offline. Never caches API calls.
-const V = "signals-v2", SHELL = ["/", "/index.html", "/app.css", "/app.js", "/manifest.webmanifest", "/icons/home-192.png"];
+const V = "signals-v3", SHELL = ["/", "/index.html", "/app.css", "/app.js", "/manifest.webmanifest", "/icons/home-192.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== V).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;           // API lives on another origin: always live
+  if (e.request.mode === "navigate") { e.respondWith(fetch(e.request, { cache: "no-store" }).catch(() => caches.match("/index.html"))); return; }
   e.respondWith(fetch(e.request).then((r) => { if (r.ok) { const c = r.clone(); caches.open(V).then((x) => x.put(e.request, c)); } return r; }).catch(() => caches.match(e.request).then((m) => m || caches.match("/index.html"))));
 });
 self.addEventListener("push", (e) => {
