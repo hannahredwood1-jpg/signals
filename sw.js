@@ -1,5 +1,5 @@
 // Signals service worker: shows web-push notifications and keeps the app shell available offline. Never caches API calls.
-const V = "signals-v1", SHELL = ["/", "/index.html", "/app.css", "/app.js", "/manifest.webmanifest", "/icons/icon-192.png"];
+const V = "signals-v2", SHELL = ["/", "/index.html", "/app.css", "/app.js", "/manifest.webmanifest", "/icons/home-192.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== V).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", (e) => {
@@ -9,7 +9,7 @@ self.addEventListener("fetch", (e) => {
 });
 self.addEventListener("push", (e) => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch { d = { title: "Signals", body: e.data ? e.data.text() : "" }; }
-  e.waitUntil(self.registration.showNotification(d.title || "Signals", { body: d.body || "", tag: d.tag || "signal", renotify: true, icon: "/icons/icon-192.png", badge: "/icons/badge.png", data: { url: d.url || "/" }, timestamp: Date.now() }));
+  e.waitUntil(self.registration.showNotification(d.title || "Signals", { body: d.body || "", tag: d.tag || "signal", renotify: true, icon: "/icons/home-192.png", badge: "/icons/badge.png", data: { url: d.url || "/" }, timestamp: Date.now() }));
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close(); const url = (e.notification.data && e.notification.data.url) || "/";
