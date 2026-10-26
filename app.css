@@ -131,3 +131,5 @@ th{font:500 10px JBMono,monospace;color:var(--ink3);letter-spacing:.1em;text-tra
 .inl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .btn{text-decoration:none}
 .side .logo{--lw:30px;margin-bottom:14px}
+
+.none{margin:6px 0 14px;padding:14px 16px;border:1px solid var(--line,#1b2230);border-radius:12px;color:var(--ink2,#9aa4b2);font-weight:600;letter-spacing:.02em}

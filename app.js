@@ -125,6 +125,8 @@ function feedHtml() {
   });
   const chips = [["all", "All"], ["EXO", "Echo x Orbit"], ["INVERTIX", "INVERTIX"], ["long", "Long"], ["short", "Short"]].map(([k, l]) => `<button class="f ${f === k ? "on" : ""}" data-act="filter" data-v="${k}">${l}</button>`).join("");
   let out = `<h2>Signals</h2><div class="chips">${chips}</div>`;
+  const live = S.rows.some((r) => r.kind === "entry" && !r.result && r.status !== "ended" && Date.now() - new Date(r.received_at).getTime() < 4 * 3600 * 1000);
+  if (!live) out += `<div class="none">No active trades</div>`;
   if (!rows.length) return out + `<div class="empty">No signals yet. They appear here the moment they fire.</div>`;
   out += `<div class="grid">`; let last = "";
   for (const r of rows) { const d = dayLabel(r.received_at); if (d !== last) { out += `<div class="day">${d}</div>`; last = d; } out += card(r); }
