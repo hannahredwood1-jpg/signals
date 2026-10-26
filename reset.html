@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reset Signals</title>
+<body style="background:#030405;color:#fff;font:18px system-ui;padding:32px">
+<p id="m">Clearing old saved copies...</p>
+<script>
+(async()=>{try{const r=await navigator.serviceWorker.getRegistrations();for(const x of r)await x.unregister();
+for(const k of await caches.keys())await caches.delete(k);try{localStorage.clear();sessionStorage.clear()}catch(e){}
+document.getElementById('m').innerHTML='Done. <a style="color:#9ccbff" href="/">Open Signals</a>'}catch(e){document.getElementById('m').textContent='Done (nothing to clear). Open signals.flowmtd.com'}})();
+</script>
