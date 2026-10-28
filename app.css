@@ -92,7 +92,8 @@ h2{font:700 12px Orbitron;letter-spacing:.16em;color:var(--ink2);text-transform:
 .chip{font:700 10.5px Rajdhani;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--line2);color:var(--ink2)}
 .c-act{color:var(--ice);border-color:var(--icedim);background:color-mix(in srgb,var(--ice) 8%,transparent)}
 .c-be{color:var(--bolt);border-color:color-mix(in srgb,var(--bolt) 45%,transparent);background:color-mix(in srgb,var(--bolt) 8%,transparent)}
-.c-late,.c-caution{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent)}
+.c-late{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent)}
+.c-caution{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent);background:color-mix(in srgb,var(--amber) 8%,transparent)}
 .c-take,.c-win{color:var(--win);border-color:color-mix(in srgb,var(--win) 45%,transparent);background:color-mix(in srgb,var(--win) 8%,transparent)}
 .c-skip,.c-loss{color:var(--loss);border-color:color-mix(in srgb,var(--loss) 45%,transparent);background:color-mix(in srgb,var(--loss) 8%,transparent)}
 .c-watch{color:var(--violet);border-color:color-mix(in srgb,var(--violet) 45%,transparent)}

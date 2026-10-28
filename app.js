@@ -141,7 +141,7 @@ function card(r) {
     let st = `<span class="chip c-act">Active trade</span>`;
     if (r.result) { const m = { target: ["c-win", "Target reached"], be: ["c-win", "Break-even"], stopped: ["c-loss", "Stopped out"], manual: ["c-act", "Closed"] }[r.result]; st = `<span class="chip ${m[0]}">Ended · ${m[1]}</span>`; }
     else if (be) st = `<span class="chip c-be">Move stop to break-even</span>`;
-    const v = r.verdict ? `<span class="chip c-${r.verdict.toLowerCase()}">Reviewer · ${r.verdict[0] + r.verdict.slice(1).toLowerCase()}</span>` : "";
+    const v = r.verdict ? `<span class="chip c-${r.verdict.toLowerCase()}">Reviewer · ${({ TAKE: "Green", CAUTION: "Yellow", SKIP: "Red" })[r.verdict] || r.verdict}</span>` : "";
     const op = r.opinion ? (S.open.has(r.id) ? `<div class="note">${esc(r.opinion)}</div><button class="more" data-act="more" data-v="${r.id}">Hide comment</button>` : `<button class="more" data-act="more" data-v="${r.id}">Reviewer comment</button>`) : "";
     return `<article class="card ${r.direction === "SHORT" ? "short" : ""}" data-id="${r.id}">${head}<div class="dir"><span class="${dirCls}">${r.direction}</span><b>${px(r.entry_px)}</b></div>
     <div class="lv"><div><i>Stop</i><b>${px(r.stop_px)}</b></div><div><i>Profit</i><b>${px(r.profit_px)}</b></div><div><i>Target</i><b>${px(r.target_px)}</b></div></div><div class="cc">${st}${v}</div>${op}</article>`;
