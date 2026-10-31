@@ -5,7 +5,7 @@ const RBX_API = "https://gtzwxamwnuxjnamwmtyn.supabase.co/functions/v1/rbx-api";
 const ET = "America/New_York";
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = { cfg: null, token: ls("sg_token"), me: null, rows: [], tab: "signals", filter: "all", sig: "", outlook: null, stats: null, open: new Set(), admin: { sessions: null, signals: null, members: null }, push: { state: "unknown" }, saveT: null };
+const S = { cfg: null, token: ls("sg_token"), me: null, rows: [], tab: "signals", filter: "all", sig: "", outlook: null, stats: null, open: new Set(), admin: { sessions: null, entries: [], cursor: 0, more: false, members: null }, push: { state: "unknown" }, saveT: null };
 function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* private mode */ } return null; }
 const deviceId = () => { let d = ls("sg_dev"); if (!d) { d = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); ls("sg_dev", d); } return d; };
 
@@ -222,6 +222,15 @@ async function liveHtml() {
     const ago = (t) => { if (!t) return "never"; const m = Math.round((Date.now() - Date.parse(t)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " d ago"; };
     return `<div class="sec">Live now (updates every 15 seconds)</div><div class="kpi"><div><i>Watching</i><b style="color:var(--win)">${pr.counts.watching}</b></div><div><i>Online</i><b>${pr.counts.online}</b></div><div><i>Alerts on</i><b>${pr.counts.push} / ${pr.counts.total}</b></div></div><div class="panel" id="live">${pr.members.map((x) => `<div class="row"><div><span class="dot" style="background:${dotc[x.status]};display:inline-block;margin-right:8px"></span><b>${esc(x.name)}${x.me ? " (you)" : ""}</b><small>${lbl[x.status]}${x.tab ? " · " + esc(x.tab) : ""} · ${x.status === "offline" ? "last seen " + ago(x.last_seen) : "active now"} · ${x.push ? "alerts on" : "alerts off"}</small></div><span class="chip">${esc(x.tier === "staff" ? x.role : x.tier || "")}</span></div>`).join("") || "<div class='empty'>Nobody has signed in yet.</div>"}</div>`;
 }
+// Results list for admins: every entry we have loaded, grouped by day, newest first. "Show earlier days" pages further back so missed days can be filled in.
+function entryRowHtml(r) {
+  return `<div class="row" data-rid="${r.id}"><div><b>${esc(ind(r.indicator))} ${r.direction} ${px(r.entry_px)}</b><small>${dayLabel(r.received_at)} ${fT.format(new Date(r.received_at))}</small></div><div class="inl"><select class="rs"><option value="">Not entered</option>${["target", "stopped", "be", "manual"].map((o) => `<option value="${o}" ${r.result === o ? "selected" : ""}>${{ target: "Target", stopped: "Stopped", be: "Break-even", manual: "Closed manually" }[o]}</option>`).join("")}</select><input class="rp" type="number" step="0.25" placeholder="pts" style="width:76px" value="${r.result_pts ?? ""}"><button class="btn small" data-act="saveres">Save</button></div></div>`;
+}
+function entriesHtml() {
+  const list = S.admin.entries || []; let day = "", h = "";
+  for (const r of list) { const k = fD.format(new Date(r.received_at)); if (k !== day) { day = k; h += `<div class="row" style="background:none"><b>${dayLabel(r.received_at)}</b><small>${list.filter((x) => fD.format(new Date(x.received_at)) === k && !x.result).length} without a result</small></div>`; } h += entryRowHtml(r); }
+  return (h || "<div class='empty'>No entries yet.</div>") + (S.admin.more ? `<div class="row"><span></span><button class="btn small" data-act="moreentries">Show earlier days</button></div>` : "");
+}
 async function loadAdmin() {
   const el = $("#ad"); if (!el) return; const admin = S.me.member.role === "ADMIN";
   try {
@@ -229,8 +238,9 @@ async function loadAdmin() {
     const ses = await api("/admin/sessions"); S.admin.sessions = ses.sessions;
     let h = live + `<div class="sec">Session times (New York time). Changes apply to everyone.</div><div class="panel">${ses.sessions.map((w) => `<div class="row" data-key="${w.key}"><div><b>${esc(w.label)}</b></div><div class="inl"><input type="time" class="ss" value="${toHM(w.start_min)}"> to <input type="time" class="se" value="${toHM(w.end_min)}">${tg(w.enabled, "winon", w.key)}</div></div>`).join("")}<div class="row"><span></span><button class="btn small" data-act="savewin">Save session times</button></div></div>`;
     if (admin) {
-      const sg = await api("/admin/signals"), mem = await api("/admin/members"); S.admin.signals = sg.rows;
-      h += `<div class="sec">Enter results (entries only)</div><div class="panel">${sg.rows.filter((r) => r.kind === "entry").slice(0, 25).map((r) => `<div class="row" data-rid="${r.id}"><div><b>${esc(ind(r.indicator))} ${r.direction} ${px(r.entry_px)}</b><small>${dayLabel(r.received_at)} ${fT.format(new Date(r.received_at))}</small></div><div class="inl"><select class="rs"><option value="">Not entered</option>${["target", "stopped", "be", "manual"].map((o) => `<option value="${o}" ${r.result === o ? "selected" : ""}>${{ target: "Target", stopped: "Stopped", be: "Break-even", manual: "Closed manually" }[o]}</option>`).join("")}</select><input class="rp" type="number" step="0.25" placeholder="pts" style="width:76px" value="${r.result_pts ?? ""}"><button class="btn small" data-act="saveres">Save</button></div></div>`).join("") || "<div class='empty'>No entries yet.</div>"}</div>`;
+      const fd = await api("/feed?limit=200"), mem = await api("/admin/members");
+      S.admin.entries = fd.rows.filter((r) => r.kind === "entry"); S.admin.cursor = fd.rows.length ? Math.min(...fd.rows.map((r) => r.id)) : 0; S.admin.more = fd.rows.length >= 200;
+      h += `<div class="sec">Enter results (entries only)</div><div class="panel" id="entries">${entriesHtml()}</div>`;
       h += `<div class="sec">Members</div><div class="panel"><table><tr><th>Name</th><th>Access</th><th>Alerts</th></tr>${mem.members.filter((x) => x.role !== "REVOKED").map((x) => `<tr><td>${esc(x.name)}</td><td>${esc(x.tier || x.role)}</td><td>${x.devices_on ? "on" : "off"}</td></tr>`).join("") || "<tr><td colspan=3>No members yet.</td></tr>"}</table></div>`;
     }
     el.innerHTML = h;
@@ -265,6 +275,9 @@ document.addEventListener("click", async (e) => {
   else if (a === "savewin") {
     const sessions = [...document.querySelectorAll("[data-key]")].map((r) => ({ key: r.dataset.key, start_min: fromHM($(".ss", r).value), end_min: fromHM($(".se", r).value), enabled: $(".tg", r).classList.contains("on") }));
     try { await api("/admin/sessions", { method: "PUT", body: { sessions } }); S.cfg = await api("/config", { auth: false }); toast("Session times saved"); } catch { toast("Could not save session times."); }
+  }
+  else if (a === "moreentries") {
+    try { const fd = await api(`/feed?limit=200&before=${S.admin.cursor}`); S.admin.entries = (S.admin.entries || []).concat(fd.rows.filter((r) => r.kind === "entry")); S.admin.cursor = fd.rows.length ? Math.min(...fd.rows.map((r) => r.id)) : S.admin.cursor; S.admin.more = fd.rows.length >= 200; const p = $("#entries"); if (p) p.innerHTML = entriesHtml(); } catch { toast("Could not load earlier days."); }
   }
   else if (a === "saveres") { const r = b.closest("[data-rid]"); try { await api("/admin/result", { method: "PUT", body: { id: Number(r.dataset.rid), result: $(".rs", r).value || null, pts: $(".rp", r).value } }); toast("Result saved"); S.sig = ""; loadFeed(); } catch { toast("Could not save the result."); } }
 });
