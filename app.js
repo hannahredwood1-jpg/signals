@@ -29,7 +29,7 @@ const mm = (m) => { const h = Math.floor(m / 60), x = m % 60, ap = h >= 12 ? "PM
 const toHM = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const fromHM = (s) => { const [h, m] = String(s).split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : null; };
 function toast(t) { const e = document.createElement("div"); e.className = "toast"; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
-const ind = (i) => (i === "EXO" ? "Echo x Orbit" : i === "RB" ? "ECHO" : i || "Signal");
+const ind = (i) => (i === "EXO" ? "Echo x Orbit" : i === "RB" ? "ECHO" : i === "HL" ? "H/L" : i === "NEWS" ? "NEWS FADE" : i || "Signal");
 
 /* ---------- logo + animated icon ---------- */
 const logo = (cls = "") => `<div class="logo ${cls}"><div class="w"><b>F</b>LOWMTD</div><div class="s">Signals</div></div>`;
@@ -120,10 +120,10 @@ function feedHtml() {
   const f = S.filter, rows = S.rows.filter((r) => {
     if (r.kind === "watching" && resolved(r)) return false;
     if (r.kind === "be" && r.parent_id && S.rows.some((x) => x.id === r.parent_id)) return false;
-    if (f === "EXO" || f === "INVERTIX" || f === "RB" || f === "ORBIT") return r.indicator === f;
+    if (f === "EXO" || f === "INVERTIX" || f === "RB" || f === "ORBIT" || f === "HL" || f === "PO3" || f === "NEWS") return r.indicator === f;
     if (f === "long") return r.direction === "LONG"; if (f === "short") return r.direction === "SHORT"; return true;
   });
-  const chips = [["all", "All"], ["RB", "ECHO"], ["ORBIT", "ORBIT"], ["EXO", "Echo x Orbit"], ["INVERTIX", "INVERTIX"], ["long", "Long"], ["short", "Short"]].map(([k, l]) => `<button class="f ${f === k ? "on" : ""}" data-act="filter" data-v="${k}">${l}</button>`).join("");
+  const chips = [["all", "All"], ["RB", "ECHO"], ["ORBIT", "ORBIT"], ["HL", "H/L"], ["PO3", "PO3"], ["NEWS", "NEWS FADE"], ["EXO", "Echo x Orbit"], ["INVERTIX", "INVERTIX"], ["long", "Long"], ["short", "Short"]].map(([k, l]) => `<button class="f ${f === k ? "on" : ""}" data-act="filter" data-v="${k}">${l}</button>`).join("");
   let out = `<h2>Signals</h2><div class="chips">${chips}</div>`;
   const live = S.rows.some((r) => r.kind === "entry" && !r.result && r.status !== "ended" && Date.now() - new Date(r.received_at).getTime() < 4 * 3600 * 1000);
   if (!live) out += `<div class="none">No active trades</div>`;
@@ -190,7 +190,7 @@ function settingsHtml() {
   const row = (t, sub, k, v, on) => `<div class="row"><div>${t}${sub ? `<small>${sub}</small>` : ""}</div>${tg(on, k, v)}</div>`;
   return `<h2>Settings</h2>${pushBox()}
   <div class="sec">Alert me about</div><div class="panel">${row("Watching", "A setup is forming. Not an entry.", "types", "watching", s.types.watching)}${row("Entry", "A confirmed signal", "types", "entry", s.types.entry)}${row("Move stop to break-even", "", "types", "be", s.types.be)}${row("No longer watching", "A watch that ended, with the reason", "types", "nlw", s.types.nlw)}${row("Morning outlook", "A notification when the 9:00 AM outlook is ready", "types", "outlook", s.types.outlook !== false)}</div>
-  <div class="sec">Indicators and direction</div><div class="panel">${row("ECHO", "", "indicators", "RB", s.indicators.RB !== false)}${row("ORBIT", "", "indicators", "ORBIT", s.indicators.ORBIT !== false)}${row("Echo x Orbit", "", "indicators", "EXO", s.indicators.EXO)}${row("INVERTIX", "", "indicators", "INVERTIX", s.indicators.INVERTIX)}<div class="row"><div>Direction</div><div class="seg">${["both", "long", "short"].map((d) => `<button class="${s.direction === d ? "on" : ""}" data-act="dir" data-v="${d}">${d}</button>`).join("")}</div></div></div>
+  <div class="sec">Indicators and direction</div><div class="panel">${row("ECHO", "", "indicators", "RB", s.indicators.RB !== false)}${row("ORBIT", "", "indicators", "ORBIT", s.indicators.ORBIT !== false)}${row("H/L", "", "indicators", "HL", s.indicators.HL !== false)}${row("PO3", "", "indicators", "PO3", s.indicators.PO3 !== false)}${row("NEWS FADE", "", "indicators", "NEWS", s.indicators.NEWS !== false)}${row("Echo x Orbit", "", "indicators", "EXO", s.indicators.EXO)}${row("INVERTIX", "", "indicators", "INVERTIX", s.indicators.INVERTIX)}<div class="row"><div>Direction</div><div class="seg">${["both", "long", "short"].map((d) => `<button class="${s.direction === d ? "on" : ""}" data-act="dir" data-v="${d}">${d}</button>`).join("")}</div></div></div>
   <div class="sec">Sessions (New York time)</div><div class="panel">${wins.map((w) => row(esc(w.label), w.enabled ? `${mm(w.start_min)} to ${mm(w.end_min)}` : "Switched off by FLOWMTD", "sessions", w.key, s.sessions[w.key] !== false)).join("")}</div>
   <div class="sec">Quiet hours (New York time)</div><div class="panel"><div class="row"><div>Mute alerts overnight<small>Signals still appear in the app</small></div>${tg(qOn, "quiet", "on")}</div>${qOn ? `<div class="row"><div class="inl"><input type="time" id="qs" value="${toHM(s.quiet_start)}"> to <input type="time" id="qe" value="${toHM(s.quiet_end)}"></div><button class="btn small" data-act="quietsave">Save</button></div>` : ""}<div class="row"><div>${paused ? "Alerts are paused" : "Pause all alerts"}<small>${paused ? "Until " + new Date(s.paused_until).toLocaleString("en-US", { timeZone: ET, weekday: "short", hour: "numeric", minute: "2-digit" }) : "For the next 12 hours"}</small></div><button class="btn small ${paused ? "" : "ghost"}" data-act="${paused ? "resume" : "pause"}">${paused ? "Resume" : "Pause"}</button></div></div>
   <div class="sec">Appearance</div><div class="panel"><div class="row"><div>Theme</div><div class="seg">${["dark", "light", "auto"].map((d) => `<button class="${(ls("sg_theme") || "dark") === d ? "on" : ""}" data-act="theme2" data-v="${d}">${d}</button>`).join("")}</div></div></div>
