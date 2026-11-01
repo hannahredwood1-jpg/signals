@@ -1,7 +1,6 @@
 "use strict";
 // Signals by FLOWMTD: members page. Talks only to the Signals API (Supabase edge function). No stats or backtest numbers are shown here, only entered results.
 const API = "https://gtzwxamwnuxjnamwmtyn.supabase.co/functions/v1/signals-api";
-const RBX_API = "https://gtzwxamwnuxjnamwmtyn.supabase.co/functions/v1/rbx-api"; // admin-only RBX reviews
 const ET = "America/New_York";
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -30,7 +29,7 @@ const mm = (m) => { const h = Math.floor(m / 60), x = m % 60, ap = h >= 12 ? "PM
 const toHM = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const fromHM = (s) => { const [h, m] = String(s).split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : null; };
 function toast(t) { const e = document.createElement("div"); e.className = "toast"; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
-const ind = (i) => (i === "EXO" ? "Echo x Orbit" : i || "Signal");
+const ind = (i) => (i === "EXO" ? "Echo x Orbit" : i === "RB" ? "ECHO" : i || "Signal");
 
 /* ---------- logo + animated icon ---------- */
 const logo = (cls = "") => `<div class="logo ${cls}"><div class="w"><b>F</b>LOWMTD</div><div class="s">Signals</div></div>`;
@@ -72,9 +71,9 @@ async function boot() {
   try { S.me = await api("/me"); } catch { return; }
   applyTheme(S.me.settings.theme || "dark", true);
   renderShell(); await loadFeed(); startPoll(); checkPushState(); ping();
-  const sid = q.get("s"); if (sid) handleDeepLink("/?s=" + sid); else if (q.get("tab") === "outlook") handleDeepLink("/?tab=outlook"); else if (q.get("tab") === "rbx") handleDeepLink("/?tab=rbx");
+  const sid = q.get("s"); if (sid) handleDeepLink("/?s=" + sid); else if (q.get("tab") === "outlook") handleDeepLink("/?tab=outlook");
 }
-function handleDeepLink(u) { if (/[?&]tab=rbx/.test(u) && S.me && S.me.member.role === "ADMIN") { S.tab = "rbx"; renderShell(); history.replaceState(null, "", "/"); return; } if (/[?&]tab=outlook/.test(u)) { S.tab = "outlook"; renderShell(); return; } const m = /[?&]s=(\d+)/.exec(u); if (!m) return; S.tab = "signals"; renderShell(); setTimeout(() => { const el = document.querySelector(`[data-id="${m[1]}"]`); if (el) { el.scrollIntoView({ block: "center" }); el.classList.add("hl"); setTimeout(() => el.classList.remove("hl"), 4000); } }, 150); history.replaceState(null, "", "/"); }
+function handleDeepLink(u) { if (/[?&]tab=outlook/.test(u)) { S.tab = "outlook"; renderShell(); return; } const m = /[?&]s=(\d+)/.exec(u); if (!m) return; S.tab = "signals"; renderShell(); setTimeout(() => { const el = document.querySelector(`[data-id="${m[1]}"]`); if (el) { el.scrollIntoView({ block: "center" }); el.classList.add("hl"); setTimeout(() => el.classList.remove("hl"), 4000); } }, 150); history.replaceState(null, "", "/"); }
 function startPoll() { clearInterval(S.poll); S.poll = setInterval(() => { if (document.visibilityState === "visible" && S.tab === "signals") loadFeed(); }, 5000); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.me) loadFeed(); }); }
 
 /* ---------- presence (lets coaches see who is online / watching; members are told in Settings) ---------- */
@@ -89,9 +88,9 @@ function applyTheme(t, fromServer) {
 }
 
 /* ---------- shell ---------- */
-const ICON = { rbx: '<path d="M4 19V5M4 19h16"/><path d="M8 15l3-4 3 2 5-6"/>', signals: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>', outlook: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', stats: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>', admin: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>' };
+const ICON = { signals: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>', outlook: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', stats: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>', admin: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>' };
 function tabsHtml() {
-  const t = [["signals", "Signals"], ["outlook", "Outlook"], ["stats", "Stats"], ["settings", "Settings"]]; if (S.me && (S.me.member.role === "ADMIN" || S.me.member.role === "COACH")) t.push(["admin", "Admin"]); if (S.me && S.me.member.role === "ADMIN") t.push(["rbx", "RBX"]);
+  const t = [["signals", "Signals"], ["outlook", "Outlook"], ["stats", "Stats"], ["settings", "Settings"]]; if (S.me && (S.me.member.role === "ADMIN" || S.me.member.role === "COACH")) t.push(["admin", "Admin"]);
   return `<nav class="tabs">${t.map(([k, l]) => `<button class="tab ${S.tab === k ? "on" : ""}" data-act="tab" data-v="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>${l}</button>`).join("")}</nav>`;
 }
 function renderShell() {
@@ -108,7 +107,6 @@ function renderView() {
   else if (S.tab === "outlook") { v.innerHTML = `<h2>Today's outlook</h2><div class="box outlook" id="ol">Loading...</div>`; loadOutlook(); }
   else if (S.tab === "stats") { v.innerHTML = `<h2>Weekly results</h2><div id="st">Loading...</div>`; loadStats(); }
   else if (S.tab === "settings") v.innerHTML = settingsHtml();
-  else if (S.tab === "rbx" && S.me && S.me.member.role === "ADMIN") { v.innerHTML = `<h2>RBX</h2><div id="rbx">Loading...</div>`; try { loadRbx(); } catch { /* never affects the rest of the app */ } }
   else if (S.tab === "admin") { v.innerHTML = `<h2>Admin</h2><div id="ad">Loading...</div>`; loadAdmin(); }
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.dataset.v === S.tab));
 }
@@ -122,10 +120,10 @@ function feedHtml() {
   const f = S.filter, rows = S.rows.filter((r) => {
     if (r.kind === "watching" && resolved(r)) return false;
     if (r.kind === "be" && r.parent_id && S.rows.some((x) => x.id === r.parent_id)) return false;
-    if (f === "EXO" || f === "INVERTIX") return r.indicator === f;
+    if (f === "EXO" || f === "INVERTIX" || f === "RB" || f === "ORBIT") return r.indicator === f;
     if (f === "long") return r.direction === "LONG"; if (f === "short") return r.direction === "SHORT"; return true;
   });
-  const chips = [["all", "All"], ["EXO", "Echo x Orbit"], ["INVERTIX", "INVERTIX"], ["long", "Long"], ["short", "Short"]].map(([k, l]) => `<button class="f ${f === k ? "on" : ""}" data-act="filter" data-v="${k}">${l}</button>`).join("");
+  const chips = [["all", "All"], ["RB", "ECHO"], ["ORBIT", "ORBIT"], ["EXO", "Echo x Orbit"], ["INVERTIX", "INVERTIX"], ["long", "Long"], ["short", "Short"]].map(([k, l]) => `<button class="f ${f === k ? "on" : ""}" data-act="filter" data-v="${k}">${l}</button>`).join("");
   let out = `<h2>Signals</h2><div class="chips">${chips}</div>`;
   const live = S.rows.some((r) => r.kind === "entry" && !r.result && r.status !== "ended" && Date.now() - new Date(r.received_at).getTime() < 4 * 3600 * 1000);
   if (!live) out += `<div class="none">No active trades</div>`;
@@ -192,7 +190,7 @@ function settingsHtml() {
   const row = (t, sub, k, v, on) => `<div class="row"><div>${t}${sub ? `<small>${sub}</small>` : ""}</div>${tg(on, k, v)}</div>`;
   return `<h2>Settings</h2>${pushBox()}
   <div class="sec">Alert me about</div><div class="panel">${row("Watching", "A setup is forming. Not an entry.", "types", "watching", s.types.watching)}${row("Entry", "A confirmed signal", "types", "entry", s.types.entry)}${row("Move stop to break-even", "", "types", "be", s.types.be)}${row("No longer watching", "A watch that ended, with the reason", "types", "nlw", s.types.nlw)}${row("Morning outlook", "A notification when the 9:00 AM outlook is ready", "types", "outlook", s.types.outlook !== false)}</div>
-  <div class="sec">Indicators and direction</div><div class="panel">${row("Echo x Orbit", "", "indicators", "EXO", s.indicators.EXO)}${row("INVERTIX", "", "indicators", "INVERTIX", s.indicators.INVERTIX)}<div class="row"><div>Direction</div><div class="seg">${["both", "long", "short"].map((d) => `<button class="${s.direction === d ? "on" : ""}" data-act="dir" data-v="${d}">${d}</button>`).join("")}</div></div></div>
+  <div class="sec">Indicators and direction</div><div class="panel">${row("ECHO", "", "indicators", "RB", s.indicators.RB !== false)}${row("ORBIT", "", "indicators", "ORBIT", s.indicators.ORBIT !== false)}${row("Echo x Orbit", "", "indicators", "EXO", s.indicators.EXO)}${row("INVERTIX", "", "indicators", "INVERTIX", s.indicators.INVERTIX)}<div class="row"><div>Direction</div><div class="seg">${["both", "long", "short"].map((d) => `<button class="${s.direction === d ? "on" : ""}" data-act="dir" data-v="${d}">${d}</button>`).join("")}</div></div></div>
   <div class="sec">Sessions (New York time)</div><div class="panel">${wins.map((w) => row(esc(w.label), w.enabled ? `${mm(w.start_min)} to ${mm(w.end_min)}` : "Switched off by FLOWMTD", "sessions", w.key, s.sessions[w.key] !== false)).join("")}</div>
   <div class="sec">Quiet hours (New York time)</div><div class="panel"><div class="row"><div>Mute alerts overnight<small>Signals still appear in the app</small></div>${tg(qOn, "quiet", "on")}</div>${qOn ? `<div class="row"><div class="inl"><input type="time" id="qs" value="${toHM(s.quiet_start)}"> to <input type="time" id="qe" value="${toHM(s.quiet_end)}"></div><button class="btn small" data-act="quietsave">Save</button></div>` : ""}<div class="row"><div>${paused ? "Alerts are paused" : "Pause all alerts"}<small>${paused ? "Until " + new Date(s.paused_until).toLocaleString("en-US", { timeZone: ET, weekday: "short", hour: "numeric", minute: "2-digit" }) : "For the next 12 hours"}</small></div><button class="btn small ${paused ? "" : "ghost"}" data-act="${paused ? "resume" : "pause"}">${paused ? "Resume" : "Pause"}</button></div></div>
   <div class="sec">Appearance</div><div class="panel"><div class="row"><div>Theme</div><div class="seg">${["dark", "light", "auto"].map((d) => `<button class="${(ls("sg_theme") || "dark") === d ? "on" : ""}" data-act="theme2" data-v="${d}">${d}</button>`).join("")}</div></div></div>
@@ -284,45 +282,3 @@ document.addEventListener("click", async (e) => {
 matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => { if ((ls("sg_theme") || "dark") === "auto") applyTheme("auto"); });
 boot();
 
-
-/* ---------- RBX (admin only). Data comes from rbx-api, which returns 403 to anyone who is not an ADMIN. ---------- */
-async function rbxApi(path, o = {}) {
-  const r = await fetch(RBX_API + path, { method: o.method || "GET", headers: { "Content-Type": "application/json", Authorization: "Bearer " + S.token }, body: o.body ? JSON.stringify(o.body) : undefined, cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j.error || "error"), { status: r.status });
-  return j;
-}
-const RBX_V = { TAKE: ["c-take", "Good entry"], CAUTION: ["c-caution", "Okay entry"], SKIP: ["c-skip", "Bad entry"] };
-const rbxWhen = (t) => new Date(t).toLocaleString("en-US", { timeZone: ET, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-function rbxTally(list, title) {
-  if (!list || !list.length) return "";
-  return `<div class="sec">${esc(title)}</div><div class="panel">${list.map((t) => `<div class="row"><div>${esc(t.key)}<small>${t.n} signal${t.n === 1 ? "" : "s"} · ${t.pending} open</small></div><div style="text-align:right"><b>${t.rate == null ? "-" : t.rate + "%"}</b><small>${t.target} target · ${t.be} BE · ${t.stopped} stopped</small></div></div>`).join("")}</div>`;
-}
-function rbxCard(r) {
-  const v = RBX_V[r.verdict] || ["", "Reviewing..."], long = r.dir === "LONG";
-  const res = r.result ? { target: ["c-win", "Target"], be: ["c-win", "Break-even"], stopped: ["c-loss", "Stopped"], manual: ["c-act", "Closed"] }[r.result] : null;
-  const g = r.ctx && r.ctx.gap && r.ctx.gap !== "none" ? ` · ${esc(r.ctx.gap)} gap` : "";
-  return `<div class="card ${long ? "" : "short"}" data-rid="${r.id}" data-e="${esc(r.entry)}" data-s="${esc(r.stop)}" data-t="${esc(r.target)}">
-    <div class="h"><div><b>${long ? "LONG" : "SHORT"} ${esc(r.entry)}</b> <span class="chip">${esc(r.grade)}</span> <span class="chip ${v[0]}">${v[1]}</span>${r.checks ? ` <span class="chip">${esc(r.checks)}</span>` : ""}</div><small>${rbxWhen(r.received_at)} ET</small></div>
-    <div class="note">Stop ${esc(r.stop)} · Target ${esc(r.target)}${g}</div>
-    ${(r.reasons || []).map((x) => `<div class="note" style="color:var(--amber)">⚠ ${esc(x)}</div>`).join("")}
-    ${(r.notes || []).slice(0, 4).map((x) => `<div class="note">• ${esc(x)}</div>`).join("")}
-    ${r.opinion ? `<div class="note" style="color:var(--ink)">${r.ai ? "Claude: " : ""}${esc(r.opinion)}</div>` : ""}
-    <div class="row" style="padding:10px 0 0"><span>${res ? `<span class="chip ${res[0]}">${res[1]}${r.result_pts != null ? " " + (Number(r.result_pts) > 0 ? "+" : "") + Math.round(Number(r.result_pts)) + " pts" : ""}</span>` : '<span class="chip">Open</span>'}</span>
-      <span><select class="rs" style="background:var(--panel);color:var(--ink);border:1px solid var(--line2);padding:8px"><option value="">Open</option><option value="target">Target</option><option value="be">Break-even</option><option value="stopped">Stopped</option></select> <button class="btn ghost small" data-act="rbxsave">Save</button></span></div></div>`;
-}
-async function loadRbx() {
-  const el = $("#rbx"); if (!el) return;
-  if (!S.rbxPoll) S.rbxPoll = setInterval(() => { try { const a = document.activeElement; if (S.tab === "rbx" && document.visibilityState === "visible" && !(a && a.closest && a.closest("#rbx"))) loadRbx(); } catch { /* ignore */ } }, 20000);
-  try {
-    const d = await rbxApi("/list");
-    el.innerHTML = `<div class="note" style="margin:0 4px 12px">Private to admins. Each RBX alert is checked against the playbook and scored, then pushed to your phone. Wins = target hit; only a stop counts as a loss.</div>${rbxTally(d.byVerdict, "Results by verdict")}${rbxTally(d.byGrade, "Results by grade")}<div class="sec">Latest signals</div>${d.rows.length ? d.rows.map(rbxCard).join("") : '<div class="empty">No RBX signals yet. They appear here when the RBX alert fires.</div>'}`;
-  } catch (e) { el.innerHTML = `<div class="empty">${e.status === 403 ? "RBX is for admins only." : "Could not load RBX reviews. Try again in a moment."}</div>`; }
-}
-document.addEventListener("click", async (ev) => {
-  const b = ev.target && ev.target.closest ? ev.target.closest('[data-act="rbxsave"]') : null; if (!b) return;
-  const c = b.closest("[data-rid]"), sel = c && c.querySelector(".rs"); if (!c || !sel) return;
-  const e = Number(c.dataset.e), st = Number(c.dataset.s), tg = Number(c.dataset.t), r = sel.value || null;
-  const pts = r === "target" ? Math.abs(tg - e) : r === "stopped" ? -Math.abs(e - st) : r === "be" ? 0 : null;
-  try { b.disabled = true; await rbxApi("/result", { method: "PUT", body: { id: Number(c.dataset.rid), result: r, pts } }); await loadRbx(); } catch { b.disabled = false; }
-});
